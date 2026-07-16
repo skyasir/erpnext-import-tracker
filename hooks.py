@@ -1,0 +1,27 @@
+app_name = "erpnext_import_tracker"
+app_title = "Import Tracker"
+app_publisher = "Smurik Solutions"
+app_description = "Purchaser-side import shipment tracking for ERPNext (India)"
+app_email = "info@smurik.com"
+app_license = "mit"
+
+after_install = "erpnext_import_tracker.install.after_install"
+
+doc_events = {
+    "Payment Entry": {
+        "on_submit": "erpnext_import_tracker.events.payment_entry.on_submit",
+    },
+    "Purchase Receipt": {
+        "on_submit": "erpnext_import_tracker.events.purchase_receipt.on_submit",
+    },
+}
+
+scheduler_events = {
+    "daily": [
+        "erpnext_import_tracker.tasks.pre_alert_reminder",
+    ],
+}
+
+fixtures = [
+    {"dt": "Custom Field", "filters": [["module", "=", "Import Tracker"]]},
+]

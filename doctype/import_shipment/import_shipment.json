@@ -1,0 +1,293 @@
+{
+ "actions": [],
+ "autoname": "format:IMP-SHP-{YYYY}-{#####}",
+ "creation": "2026-07-16 10:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "status",
+  "links_section",
+  "purchase_order",
+  "supplier",
+  "company",
+  "column_break_links",
+  "purchase_invoice",
+  "cha",
+  "shipment_section",
+  "mode",
+  "port_of_discharge",
+  "vessel_flight",
+  "column_break_shipment",
+  "bl_awb_no",
+  "bl_awb_date",
+  "coo_received",
+  "column_break_dates",
+  "pre_alert_date",
+  "eta",
+  "checklist_section",
+  "end_use_declaration_required",
+  "boe_checklist",
+  "customs_section",
+  "duty_paid_date",
+  "column_break_customs",
+  "clearance_date",
+  "delivery_section",
+  "vehicle_no",
+  "transporter",
+  "column_break_delivery",
+  "eway_bill_no",
+  "received_date",
+  "remarks_section",
+  "remarks"
+ ],
+ "fields": [
+  {
+   "default": "Docs Received",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Docs Received\nForwarded to CHA\nPre-Alert Received\nBOE Checklist Confirmed\nDuty Paid\nUnder Clearance\nDocs Endorsed\nCleared\nIn Transit\nReceived at Factory",
+   "read_only": 1
+  },
+  {
+   "fieldname": "links_section",
+   "fieldtype": "Section Break",
+   "label": "References"
+  },
+  {
+   "fieldname": "purchase_order",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Purchase Order",
+   "options": "Purchase Order",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "purchase_order.supplier",
+   "fieldname": "supplier",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Supplier",
+   "options": "Supplier",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "purchase_order.company",
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_links",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "purchase_invoice",
+   "fieldtype": "Link",
+   "label": "Purchase Invoice",
+   "options": "Purchase Invoice"
+  },
+  {
+   "fieldname": "cha",
+   "fieldtype": "Link",
+   "label": "CHA (Clearing Agent)",
+   "options": "Supplier"
+  },
+  {
+   "fieldname": "shipment_section",
+   "fieldtype": "Section Break",
+   "label": "Shipment Details"
+  },
+  {
+   "fieldname": "mode",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Mode",
+   "options": "\nSea\nAir",
+   "reqd": 1
+  },
+  {
+   "fieldname": "port_of_discharge",
+   "fieldtype": "Data",
+   "label": "Port / Airport of Discharge"
+  },
+  {
+   "fieldname": "vessel_flight",
+   "fieldtype": "Data",
+   "label": "Vessel / Flight"
+  },
+  {
+   "fieldname": "column_break_shipment",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "bl_awb_no",
+   "fieldtype": "Data",
+   "label": "BL / AWB No"
+  },
+  {
+   "fieldname": "bl_awb_date",
+   "fieldtype": "Date",
+   "label": "BL / AWB Date"
+  },
+  {
+   "default": "0",
+   "fieldname": "coo_received",
+   "fieldtype": "Check",
+   "label": "COO Received"
+  },
+  {
+   "fieldname": "column_break_dates",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "pre_alert_date",
+   "fieldtype": "Date",
+   "label": "Pre-Alert Date"
+  },
+  {
+   "fieldname": "eta",
+   "fieldtype": "Date",
+   "label": "ETA"
+  },
+  {
+   "fieldname": "checklist_section",
+   "fieldtype": "Section Break",
+   "label": "BOE Checklist"
+  },
+  {
+   "default": "0",
+   "description": "Only if customs requests brochure / end use declaration",
+   "fieldname": "end_use_declaration_required",
+   "fieldtype": "Check",
+   "label": "End Use Declaration Required"
+  },
+  {
+   "fieldname": "boe_checklist",
+   "fieldtype": "Table",
+   "label": "Checklist",
+   "options": "BOE Checklist Item"
+  },
+  {
+   "fieldname": "customs_section",
+   "fieldtype": "Section Break",
+   "label": "Customs"
+  },
+  {
+   "fieldname": "duty_paid_date",
+   "fieldtype": "Date",
+   "label": "Duty Paid Date"
+  },
+  {
+   "fieldname": "column_break_customs",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "clearance_date",
+   "fieldtype": "Date",
+   "label": "Clearance Date"
+  },
+  {
+   "fieldname": "delivery_section",
+   "fieldtype": "Section Break",
+   "label": "Delivery"
+  },
+  {
+   "fieldname": "vehicle_no",
+   "fieldtype": "Data",
+   "label": "Vehicle No"
+  },
+  {
+   "fieldname": "transporter",
+   "fieldtype": "Link",
+   "label": "Transporter",
+   "options": "Supplier"
+  },
+  {
+   "fieldname": "column_break_delivery",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "eway_bill_no",
+   "fieldtype": "Data",
+   "label": "E-Way Bill No"
+  },
+  {
+   "fieldname": "received_date",
+   "fieldtype": "Date",
+   "label": "Received at Factory On"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "remarks_section",
+   "fieldtype": "Section Break",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-07-16 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Import Tracker",
+ "name": "Import Shipment",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Purchase User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Purchase Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Accounts User",
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
