@@ -7,7 +7,14 @@ app_license = "mit"
 
 after_install = "erpnext_import_tracker.install.after_install"
 
+doctype_js = {
+    "Purchase Order": "public/js/purchase_order.js",
+}
+
 doc_events = {
+    "Purchase Order": {
+        "on_submit": "erpnext_import_tracker.events.purchase_order.on_submit",
+    },
     "Payment Entry": {
         "on_submit": "erpnext_import_tracker.events.payment_entry.on_submit",
     },
