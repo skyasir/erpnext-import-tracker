@@ -3,6 +3,7 @@ from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 
 STATES = [
 	# (state, allow_edit_role, style)
+	("Awaiting Shipment", "Purchase User", "Warning"),
 	("Docs Received", "Purchase User", "Warning"),
 	("Forwarded to CHA", "Purchase User", "Warning"),
 	("Pre-Alert Received", "Purchase User", "Warning"),
@@ -17,6 +18,7 @@ STATES = [
 
 TRANSITIONS = [
 	# (state, action, next_state, allowed_role)
+	("Awaiting Shipment", "Mark Docs Received", "Docs Received", "Purchase User"),
 	("Docs Received", "Forward to CHA", "Forwarded to CHA", "Purchase User"),
 	("Forwarded to CHA", "Mark Pre-Alert Received", "Pre-Alert Received", "Purchase User"),
 	("Pre-Alert Received", "Confirm Checklist", "BOE Checklist Confirmed", "Purchase Manager"),

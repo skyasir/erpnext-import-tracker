@@ -15,6 +15,7 @@ DEFAULT_CHECKLIST = [
 # States before the checklist is confirmed; the checklist need not be complete in these.
 # Every later state requires all applicable documents received and verified.
 PRE_CHECKLIST_STATES = (
+	"Awaiting Shipment",
 	"Docs Received",
 	"Forwarded to CHA",
 	"Pre-Alert Received",

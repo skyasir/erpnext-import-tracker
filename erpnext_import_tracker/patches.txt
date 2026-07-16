@@ -1,0 +1,4 @@
+[pre_model_sync]
+
+[post_model_sync]
+erpnext_import_tracker.patches.add_awaiting_shipment_state

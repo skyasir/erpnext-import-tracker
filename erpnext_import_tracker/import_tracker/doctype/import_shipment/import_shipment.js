@@ -1,6 +1,7 @@
 frappe.ui.form.on("Import Shipment", {
 	refresh(frm) {
 		const colors = {
+			"Awaiting Shipment": "gray",
 			"Docs Received": "orange",
 			"Forwarded to CHA": "orange",
 			"Pre-Alert Received": "yellow",
@@ -16,10 +17,25 @@ frappe.ui.form.on("Import Shipment", {
 			frm.page.set_indicator(frm.doc.status, colors[frm.doc.status] || "gray");
 		}
 
-		if (!frm.is_new() && frm.doc.purchase_invoice && frappe.boot.versions?.india_compliance) {
+		if (frm.is_new() || !frappe.boot.versions?.india_compliance) {
+			return;
+		}
+
+		if (frm.doc.bill_of_entry) {
 			frm.add_custom_button(__("Bill of Entry"), () => {
-				frappe.new_doc("Bill of Entry", { purchase_invoice: frm.doc.purchase_invoice });
-			}, __("Create"));
+				frappe.set_route("Form", "Bill of Entry", frm.doc.bill_of_entry);
+			});
+		} else if (frm.doc.purchase_invoice) {
+			frm.add_custom_button(
+				__("Bill of Entry"),
+				() => {
+					frappe.model.open_mapped_doc({
+						method: "india_compliance.gst_india.doctype.bill_of_entry.bill_of_entry.make_bill_of_entry",
+						source_name: frm.doc.purchase_invoice,
+					});
+				},
+				__("Create")
+			);
 		}
 	},
 
