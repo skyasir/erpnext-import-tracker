@@ -11,6 +11,14 @@ DEFAULT_CHECKLIST = [
 	"Purchase Order Copy",
 ]
 
+# States before the checklist is confirmed; the checklist need not be complete in these.
+# Every later state requires all applicable documents received and verified.
+PRE_CHECKLIST_STATES = (
+	"Docs Received",
+	"Forwarded to CHA",
+	"Pre-Alert Received",
+)
+
 
 class ImportShipment(Document):
 	def before_insert(self):
@@ -21,6 +29,7 @@ class ImportShipment(Document):
 	def validate(self):
 		self.sync_end_use_row()
 		self.stamp_dates()
+		self.validate_checklist_complete()
 
 	def sync_end_use_row(self):
 		"""Add/remove the conditional End Use Declaration row (dashed box in the flowchart)."""
@@ -42,18 +51,25 @@ class ImportShipment(Document):
 		if self.status == "Received at Factory" and not self.received_date:
 			self.received_date = today()
 
-	def before_workflow_action(self):
-		"""Block checklist confirmation until every applicable document is received and verified."""
-		action = frappe.form_dict.get("action")
-		if action == "Confirm Checklist":
-			pending = [
-				d.document_name
-				for d in self.boe_checklist
-				if not (d.received and d.verified)
-			]
-			if pending:
-				frappe.throw(
-					"Cannot confirm BOE checklist. Pending documents: {0}".format(
-						", ".join(pending)
-					)
+	def validate_checklist_complete(self):
+		"""Block checklist confirmation (and every later state) until every applicable
+		document is received and verified.
+
+		Enforced in validate() because each workflow transition saves the document.
+		before_workflow_action is a client-side form event, not a server hook, so a
+		Python method of that name never runs on the server.
+		"""
+		if self.status in PRE_CHECKLIST_STATES:
+			return
+
+		pending = [
+			d.document_name
+			for d in self.boe_checklist
+			if not (d.received and d.verified)
+		]
+		if pending:
+			frappe.throw(
+				"Cannot confirm BOE checklist. Pending documents: {0}".format(
+					", ".join(pending)
 				)
+			)
