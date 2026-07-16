@@ -1,0 +1,62 @@
+{
+ "actions": [],
+ "creation": "2026-07-16 10:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "enable_reminders",
+  "pre_alert_reminder_days",
+  "notification_role"
+ ],
+ "fields": [
+  {
+   "default": "1",
+   "fieldname": "enable_reminders",
+   "fieldtype": "Check",
+   "label": "Enable Pre-Alert Reminders"
+  },
+  {
+   "default": "3",
+   "depends_on": "enable_reminders",
+   "description": "Remind if BOE checklist is not confirmed within these many days of pre-alert",
+   "fieldname": "pre_alert_reminder_days",
+   "fieldtype": "Int",
+   "label": "Pre-Alert Reminder Days"
+  },
+  {
+   "default": "Purchase User",
+   "depends_on": "enable_reminders",
+   "fieldname": "notification_role",
+   "fieldtype": "Link",
+   "label": "Notify Users With Role",
+   "options": "Role"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-07-16 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Import Tracker",
+ "name": "Import Tracker Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Purchase Manager",
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
