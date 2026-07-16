@@ -28,6 +28,7 @@
   "end_use_declaration_required",
   "boe_checklist",
   "customs_section",
+  "bill_of_entry",
   "duty_paid_date",
   "column_break_customs",
   "clearance_date",
@@ -42,13 +43,13 @@
  ],
  "fields": [
   {
-   "default": "Docs Received",
+   "default": "Awaiting Shipment",
    "fieldname": "status",
    "fieldtype": "Select",
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Status",
-   "options": "Docs Received\nForwarded to CHA\nPre-Alert Received\nBOE Checklist Confirmed\nDuty Paid\nUnder Clearance\nDocs Endorsed\nCleared\nIn Transit\nReceived at Factory",
+   "options": "Awaiting Shipment\nDocs Received\nForwarded to CHA\nPre-Alert Received\nBOE Checklist Confirmed\nDuty Paid\nUnder Clearance\nDocs Endorsed\nCleared\nIn Transit\nReceived at Factory",
    "read_only": 1
   },
   {
@@ -178,6 +179,12 @@
    "fieldname": "customs_section",
    "fieldtype": "Section Break",
    "label": "Customs"
+  },
+  {
+   "fieldname": "bill_of_entry",
+   "fieldtype": "Link",
+   "label": "Bill of Entry",
+   "options": "Bill of Entry"
   },
   {
    "fieldname": "duty_paid_date",

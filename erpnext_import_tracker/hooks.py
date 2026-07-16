@@ -21,6 +21,10 @@ doc_events = {
     "Purchase Receipt": {
         "on_submit": "erpnext_import_tracker.events.purchase_receipt.on_submit",
     },
+    # India Compliance standard Bill of Entry (no-op if the doctype is not installed)
+    "Bill of Entry": {
+        "on_submit": "erpnext_import_tracker.events.bill_of_entry.on_submit",
+    },
 }
 
 scheduler_events = {
