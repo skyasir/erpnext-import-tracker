@@ -1,4 +1,5 @@
 import frappe
+from frappe import _
 from frappe.model.document import Document
 from frappe.utils import today
 
@@ -73,3 +74,42 @@ class ImportShipment(Document):
 					", ".join(pending)
 				)
 			)
+
+
+def create_import_shipment(purchase_order):
+	"""Create an Import Shipment for a PO, or return the existing one.
+
+	Internal helper (no permission check) shared by the Purchase Order / Payment Entry
+	auto-create hooks. Callers that run on user action should permission-check first.
+	"""
+	existing = frappe.db.exists("Import Shipment", {"purchase_order": purchase_order})
+	if existing:
+		return existing
+
+	shipment = frappe.new_doc("Import Shipment")
+	shipment.purchase_order = purchase_order
+	shipment.mode = "Sea"
+	shipment.insert(ignore_permissions=True)
+	return shipment.name
+
+
+@frappe.whitelist()
+def make_import_shipment(purchase_order):
+	"""Create (or open the existing) Import Shipment for an import PO. Button entry point."""
+	po = frappe.db.get_value(
+		"Purchase Order",
+		purchase_order,
+		["name", "custom_is_import", "docstatus"],
+		as_dict=True,
+	)
+	if not po:
+		frappe.throw(_("Purchase Order {0} not found").format(purchase_order))
+	if not po.custom_is_import:
+		frappe.throw(_("{0} is not marked as an import Purchase Order").format(purchase_order))
+	if po.docstatus != 1:
+		frappe.throw(_("Purchase Order {0} must be submitted first").format(purchase_order))
+
+	if not frappe.db.exists("Import Shipment", {"purchase_order": purchase_order}):
+		frappe.has_permission("Import Shipment", "create", throw=True)
+
+	return create_import_shipment(purchase_order)
