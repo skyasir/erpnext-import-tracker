@@ -12,7 +12,11 @@ doctype_js = {
 }
 
 doc_events = {
+    "Item": {
+        "validate": "erpnext_import_tracker.events.item.validate",
+    },
     "Purchase Order": {
+        "validate": "erpnext_import_tracker.events.purchase_order.validate",
         "on_submit": "erpnext_import_tracker.events.purchase_order.on_submit",
     },
     "Payment Entry": {

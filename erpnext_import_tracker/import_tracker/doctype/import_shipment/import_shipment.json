@@ -6,6 +6,7 @@
  "engine": "InnoDB",
  "field_order": [
   "status",
+  "stage_index",
   "links_section",
   "purchase_order",
   "supplier",
@@ -13,6 +14,35 @@
   "column_break_links",
   "purchase_invoice",
   "cha",
+  "order_section",
+  "payment_terms_template",
+  "advance_percentage",
+  "order_confirmation_date",
+  "column_break_order",
+  "incoterm",
+  "named_place",
+  "rate_checked",
+  "rate_check_remarks",
+  "insurance_section",
+  "insurance_required",
+  "insurance_amount",
+  "column_break_insurance",
+  "insurance_document",
+  "insurance_payment_entry",
+  "payments_section",
+  "payments",
+  "pi_value_section",
+  "pi_value_confirmed",
+  "pi_value_final",
+  "column_break_pi",
+  "pi_value_variation",
+  "pi_variation_reason",
+  "cha_section",
+  "cha_quotation_confirmed",
+  "cha_documentation_complete",
+  "column_break_cha",
+  "cha_pickup_confirmed",
+  "cha_final_docs_complete",
   "shipment_section",
   "mode",
   "port_of_discharge",
@@ -20,24 +50,54 @@
   "column_break_shipment",
   "bl_awb_no",
   "bl_awb_date",
-  "coo_received",
   "column_break_dates",
   "pre_alert_date",
   "eta",
-  "checklist_section",
-  "end_use_declaration_required",
+  "documents_section",
   "boe_checklist",
+  "endorsement_section",
+  "original_docs_received",
+  "docs_endorsed_date",
+  "column_break_endorsement",
+  "endorsed_on_soft_copy",
+  "endorsement_remarks",
+  "additional_docs_section",
+  "end_use_declaration_required",
+  "customs_query_raised",
+  "customs_query_details",
+  "column_break_additional",
+  "shipping_line_docs_required",
+  "shipping_line_doc_details",
   "customs_section",
   "bill_of_entry",
+  "boe_checklist_confirmed_date",
   "duty_paid_date",
   "column_break_customs",
+  "clearance_initiated_date",
   "clearance_date",
   "delivery_section",
   "vehicle_no",
   "transporter",
-  "column_break_delivery",
   "eway_bill_no",
+  "column_break_delivery",
+  "eway_bill_date",
+  "eway_bill_copy",
+  "plant_notified",
+  "plant_notified_on",
+  "receipt_section",
+  "container_arrival_date",
+  "unloading_completed",
+  "column_break_receipt",
+  "purchase_receipt",
   "received_date",
+  "closure_section",
+  "docs_submitted_to_bank",
+  "bank_submission_date",
+  "covering_letter",
+  "column_break_closure",
+  "bank_received_copy",
+  "bank_received_date",
+  "closure_remarks",
   "remarks_section",
   "remarks"
  ],
@@ -49,7 +109,17 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Status",
-   "options": "Awaiting Shipment\nDocs Received\nForwarded to CHA\nPre-Alert Received\nBOE Checklist Confirmed\nDuty Paid\nUnder Clearance\nDocs Endorsed\nCleared\nIn Transit\nReceived at Factory",
+   "options": "Awaiting Shipment\nAdvance Paid\nBalance Paid\nDocs Received\nForwarded to CHA\nPre-Alert Received\nDocs Endorsed\nBOE Checklist Confirmed\nDuty Paid\nUnder Clearance\nCleared\nIn Transit\nReceived at Factory\nDocs Submitted to Bank\nClosed",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "description": "Position of Status in the workflow. Drives section visibility.",
+   "fieldname": "stage_index",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "Stage Index",
+   "no_copy": 1,
    "read_only": 1
   },
   {
@@ -100,6 +170,178 @@
    "options": "Supplier"
   },
   {
+   "fieldname": "order_section",
+   "fieldtype": "Section Break",
+   "label": "Order Confirmation"
+  },
+  {
+   "description": "Inherited from the purchase order. Required before leaving Awaiting Shipment.",
+   "fetch_from": "purchase_order.payment_terms_template",
+   "fetch_if_empty": 1,
+   "fieldname": "payment_terms_template",
+   "fieldtype": "Link",
+   "label": "Payment Terms",
+   "options": "Payment Terms Template"
+  },
+  {
+   "description": "Portion payable on order confirmation. Leave at 0 for terms with no advance leg (Against BL, Against Readiness, Prior To Dispatch).",
+   "fieldname": "advance_percentage",
+   "fieldtype": "Percent",
+   "label": "Advance %"
+  },
+  {
+   "fieldname": "order_confirmation_date",
+   "fieldtype": "Date",
+   "label": "Order Confirmation Date"
+  },
+  {
+   "fieldname": "column_break_order",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Required before leaving Awaiting Shipment.",
+   "fetch_from": "purchase_order.incoterm",
+   "fetch_if_empty": 1,
+   "fieldname": "incoterm",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Incoterm (Shipment Terms)",
+   "options": "Incoterm"
+  },
+  {
+   "depends_on": "incoterm",
+   "fetch_from": "purchase_order.named_place",
+   "fetch_if_empty": 1,
+   "fieldname": "named_place",
+   "fieldtype": "Data",
+   "label": "Named Place"
+  },
+  {
+   "default": "0",
+   "fieldname": "rate_checked",
+   "fieldtype": "Check",
+   "label": "Rates Checked vs Earlier Supplies"
+  },
+  {
+   "depends_on": "rate_checked",
+   "fieldname": "rate_check_remarks",
+   "fieldtype": "Small Text",
+   "label": "Rate Check Remarks"
+  },
+  {
+   "depends_on": "eval:doc.incoterm && !['CIF', 'CIP'].includes(doc.incoterm)",
+   "description": "Under CIF/CIP the vendor carries the insurance; on any other incoterm the risk, and the cover, are ours.",
+   "fieldname": "insurance_section",
+   "fieldtype": "Section Break",
+   "label": "Insurance"
+  },
+  {
+   "default": "0",
+   "fieldname": "insurance_required",
+   "fieldtype": "Check",
+   "label": "Is Insurance Needed?"
+  },
+  {
+   "depends_on": "insurance_required",
+   "fieldname": "insurance_amount",
+   "fieldtype": "Currency",
+   "label": "Insurance Amount"
+  },
+  {
+   "fieldname": "column_break_insurance",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "insurance_required",
+   "fieldname": "insurance_document",
+   "fieldtype": "Attach",
+   "label": "Insurance Document"
+  },
+  {
+   "depends_on": "insurance_required",
+   "fieldname": "insurance_payment_entry",
+   "fieldtype": "Link",
+   "label": "Insurance Payment Entry",
+   "options": "Payment Entry"
+  },
+  {
+   "description": "Advance, balance, customs duty, CHA and delivery-order payments. Every row needs its SWIFT copy / receipt attached.",
+   "fieldname": "payments_section",
+   "fieldtype": "Section Break",
+   "label": "Payments"
+  },
+  {
+   "fieldname": "payments",
+   "fieldtype": "Table",
+   "label": "Payments",
+   "options": "Import Shipment Payment"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "pi_value_section",
+   "fieldtype": "Section Break",
+   "label": "PI Value Variation"
+  },
+  {
+   "fieldname": "pi_value_confirmed",
+   "fieldtype": "Currency",
+   "label": "PI Value Confirmed at Order"
+  },
+  {
+   "fieldname": "pi_value_final",
+   "fieldtype": "Currency",
+   "label": "Final PI Value"
+  },
+  {
+   "fieldname": "column_break_pi",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "pi_value_variation",
+   "fieldtype": "Currency",
+   "label": "Variation",
+   "read_only": 1
+  },
+  {
+   "fieldname": "pi_variation_reason",
+   "fieldtype": "Small Text",
+   "label": "Reason for Variation"
+  },
+  {
+   "depends_on": "eval:doc.stage_index >= 2 && doc.incoterm=='EXW'",
+   "fieldname": "cha_section",
+   "fieldtype": "Section Break",
+   "label": "CHA Handover (EXW)"
+  },
+  {
+   "default": "0",
+   "fieldname": "cha_quotation_confirmed",
+   "fieldtype": "Check",
+   "label": "Quotation Confirmed"
+  },
+  {
+   "default": "0",
+   "fieldname": "cha_documentation_complete",
+   "fieldtype": "Check",
+   "label": "Documentation Complete"
+  },
+  {
+   "fieldname": "column_break_cha",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "cha_pickup_confirmed",
+   "fieldtype": "Check",
+   "label": "Pickup / Loading Confirmed"
+  },
+  {
+   "default": "0",
+   "fieldname": "cha_final_docs_complete",
+   "fieldtype": "Check",
+   "label": "Final Documentation Complete"
+  },
+  {
    "fieldname": "shipment_section",
    "fieldtype": "Section Break",
    "label": "Shipment Details"
@@ -138,12 +380,6 @@
    "label": "BL / AWB Date"
   },
   {
-   "default": "0",
-   "fieldname": "coo_received",
-   "fieldtype": "Check",
-   "label": "COO Received"
-  },
-  {
    "fieldname": "column_break_dates",
    "fieldtype": "Column Break"
   },
@@ -158,33 +394,111 @@
    "label": "ETA"
   },
   {
-   "fieldname": "checklist_section",
+   "description": "Invoice, packing list, COO and BL / AWB are mandatory for every import.",
+   "fieldname": "documents_section",
    "fieldtype": "Section Break",
-   "label": "BOE Checklist"
+   "label": "Import Documents"
+  },
+  {
+   "fieldname": "boe_checklist",
+   "fieldtype": "Table",
+   "label": "Documents",
+   "options": "BOE Checklist Item"
+  },
+  {
+   "depends_on": "eval:doc.stage_index >= 4",
+   "fieldname": "endorsement_section",
+   "fieldtype": "Section Break",
+   "label": "Document Endorsement"
   },
   {
    "default": "0",
-   "description": "Only if customs requests brochure / end use declaration",
+   "fieldname": "original_docs_received",
+   "fieldtype": "Check",
+   "label": "Original Documents Received"
+  },
+  {
+   "fieldname": "docs_endorsed_date",
+   "fieldtype": "Date",
+   "label": "Endorsed On"
+  },
+  {
+   "fieldname": "column_break_endorsement",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "description": "Tick when originals were not used and clearance ran on soft copies.",
+   "fieldname": "endorsed_on_soft_copy",
+   "fieldtype": "Check",
+   "label": "Cleared on Soft Copies"
+  },
+  {
+   "fieldname": "endorsement_remarks",
+   "fieldtype": "Small Text",
+   "label": "Endorsement Remarks"
+  },
+  {
+   "collapsible": 1,
+   "depends_on": "eval:doc.stage_index >= 3",
+   "description": "Raised by customs or the shipping line at any stage before GRN.",
+   "fieldname": "additional_docs_section",
+   "fieldtype": "Section Break",
+   "label": "Customs & Shipping Line Requirements"
+  },
+  {
+   "default": "0",
+   "description": "Can be raised at any stage before GRN, including after the BOE checklist is confirmed.",
    "fieldname": "end_use_declaration_required",
    "fieldtype": "Check",
    "label": "End Use Declaration Required"
   },
   {
-   "fieldname": "boe_checklist",
-   "fieldtype": "Table",
-   "label": "Checklist",
-   "options": "BOE Checklist Item"
+   "default": "0",
+   "fieldname": "customs_query_raised",
+   "fieldtype": "Check",
+   "label": "Customs Query Raised"
   },
   {
+   "depends_on": "customs_query_raised",
+   "fieldname": "customs_query_details",
+   "fieldtype": "Small Text",
+   "label": "Customs Query Details"
+  },
+  {
+   "fieldname": "column_break_additional",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "shipping_line_docs_required",
+   "fieldtype": "Check",
+   "label": "Shipping Line Documents Required"
+  },
+  {
+   "depends_on": "shipping_line_docs_required",
+   "description": "Bond, letter of authorization, and similar.",
+   "fieldname": "shipping_line_doc_details",
+   "fieldtype": "Small Text",
+   "label": "Shipping Line Document Details"
+  },
+  {
+   "depends_on": "eval:doc.stage_index >= 5",
    "fieldname": "customs_section",
    "fieldtype": "Section Break",
-   "label": "Customs"
+   "label": "Customs & Duty"
   },
   {
    "fieldname": "bill_of_entry",
    "fieldtype": "Link",
    "label": "Bill of Entry",
    "options": "Bill of Entry"
+  },
+  {
+   "fieldname": "boe_checklist_confirmed_date",
+   "fieldtype": "Date",
+   "label": "BOE Checklist Confirmed On",
+   "read_only": 1
   },
   {
    "fieldname": "duty_paid_date",
@@ -196,14 +510,20 @@
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "clearance_date",
+   "fieldname": "clearance_initiated_date",
    "fieldtype": "Date",
-   "label": "Clearance Date"
+   "label": "Clearance Initiated On"
   },
   {
+   "fieldname": "clearance_date",
+   "fieldtype": "Date",
+   "label": "Clearance Completed On"
+  },
+  {
+   "depends_on": "eval:doc.stage_index >= 9",
    "fieldname": "delivery_section",
    "fieldtype": "Section Break",
-   "label": "Delivery"
+   "label": "E-Way Bill & Transport"
   },
   {
    "fieldname": "vehicle_no",
@@ -217,18 +537,112 @@
    "options": "Supplier"
   },
   {
-   "fieldname": "column_break_delivery",
-   "fieldtype": "Column Break"
-  },
-  {
    "fieldname": "eway_bill_no",
    "fieldtype": "Data",
    "label": "E-Way Bill No"
   },
   {
+   "fieldname": "column_break_delivery",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "eway_bill_date",
+   "fieldtype": "Date",
+   "label": "E-Way Bill Date"
+  },
+  {
+   "fieldname": "eway_bill_copy",
+   "fieldtype": "Attach",
+   "label": "E-Way Bill Copy"
+  },
+  {
+   "default": "0",
+   "fieldname": "plant_notified",
+   "fieldtype": "Check",
+   "label": "Plant / Store Notified",
+   "read_only": 1
+  },
+  {
+   "depends_on": "plant_notified",
+   "fieldname": "plant_notified_on",
+   "fieldtype": "Datetime",
+   "label": "Plant Notified On",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.stage_index >= 11",
+   "fieldname": "receipt_section",
+   "fieldtype": "Section Break",
+   "label": "Unloading & GRN"
+  },
+  {
+   "fieldname": "container_arrival_date",
+   "fieldtype": "Date",
+   "label": "Container Arrived On"
+  },
+  {
+   "default": "0",
+   "description": "Unloading must finish the same day the container arrives.",
+   "fieldname": "unloading_completed",
+   "fieldtype": "Check",
+   "label": "Unloading Completed"
+  },
+  {
+   "fieldname": "column_break_receipt",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "purchase_receipt",
+   "fieldtype": "Link",
+   "label": "Purchase Receipt (GRN)",
+   "options": "Purchase Receipt"
+  },
+  {
    "fieldname": "received_date",
    "fieldtype": "Date",
    "label": "Received at Factory On"
+  },
+  {
+   "depends_on": "eval:doc.stage_index >= 12",
+   "fieldname": "closure_section",
+   "fieldtype": "Section Break",
+   "label": "Bank Closure"
+  },
+  {
+   "default": "0",
+   "fieldname": "docs_submitted_to_bank",
+   "fieldtype": "Check",
+   "label": "Docs Submitted to Bank"
+  },
+  {
+   "fieldname": "bank_submission_date",
+   "fieldtype": "Date",
+   "label": "Submitted to Bank On"
+  },
+  {
+   "fieldname": "covering_letter",
+   "fieldtype": "Attach",
+   "label": "Covering Letter"
+  },
+  {
+   "fieldname": "column_break_closure",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "The bank's acknowledged copy of the covering letter.",
+   "fieldname": "bank_received_copy",
+   "fieldtype": "Attach",
+   "label": "Bank Received Copy"
+  },
+  {
+   "fieldname": "bank_received_date",
+   "fieldtype": "Date",
+   "label": "Bank Copy Received On"
+  },
+  {
+   "fieldname": "closure_remarks",
+   "fieldtype": "Small Text",
+   "label": "Closure Remarks"
   },
   {
    "collapsible": 1,
@@ -244,7 +658,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-07-16 10:00:00.000000",
+ "modified": "2026-08-12 10:00:00.000000",
  "modified_by": "Administrator",
  "module": "Import Tracker",
  "name": "Import Shipment",
