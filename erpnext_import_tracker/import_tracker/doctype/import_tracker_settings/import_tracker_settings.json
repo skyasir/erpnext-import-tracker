@@ -4,11 +4,20 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "reminder_section",
   "enable_reminders",
   "pre_alert_reminder_days",
-  "notification_role"
+  "notification_role",
+  "plant_section",
+  "notify_plant_on_eway_bill",
+  "store_notification_role"
  ],
  "fields": [
+  {
+   "fieldname": "reminder_section",
+   "fieldtype": "Section Break",
+   "label": "Pre-Alert Reminders"
+  },
   {
    "default": "1",
    "fieldname": "enable_reminders",
@@ -29,6 +38,26 @@
    "fieldname": "notification_role",
    "fieldtype": "Link",
    "label": "Notify Users With Role",
+   "options": "Role"
+  },
+  {
+   "fieldname": "plant_section",
+   "fieldtype": "Section Break",
+   "label": "Plant Intimation"
+  },
+  {
+   "default": "1",
+   "description": "Tell the factory store as soon as the E-Way Bill is generated, so unloading can be prepared for (SOP step 23).",
+   "fieldname": "notify_plant_on_eway_bill",
+   "fieldtype": "Check",
+   "label": "Notify Plant on E-Way Bill"
+  },
+  {
+   "default": "Stock User",
+   "depends_on": "notify_plant_on_eway_bill",
+   "fieldname": "store_notification_role",
+   "fieldtype": "Link",
+   "label": "Notify Store Users With Role",
    "options": "Role"
   }
  ],

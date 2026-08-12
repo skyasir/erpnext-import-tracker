@@ -2,22 +2,36 @@ frappe.ui.form.on("Import Shipment", {
 	refresh(frm) {
 		const colors = {
 			"Awaiting Shipment": "gray",
+			"Advance Paid": "orange",
+			"Balance Paid": "orange",
 			"Docs Received": "orange",
 			"Forwarded to CHA": "orange",
 			"Pre-Alert Received": "yellow",
+			"Docs Endorsed": "yellow",
 			"BOE Checklist Confirmed": "blue",
 			"Duty Paid": "blue",
 			"Under Clearance": "purple",
-			"Docs Endorsed": "purple",
-			"Cleared": "green",
+			Cleared: "green",
 			"In Transit": "green",
 			"Received at Factory": "green",
+			"Docs Submitted to Bank": "green",
+			Closed: "darkgrey",
 		};
 		if (frm.doc.status) {
 			frm.page.set_indicator(frm.doc.status, colors[frm.doc.status] || "gray");
 		}
 
-		if (frm.is_new() || !frappe.boot.versions?.india_compliance) {
+		if (frm.is_new()) {
+			return;
+		}
+
+		if (frm.doc.purchase_receipt) {
+			frm.add_custom_button(__("Purchase Receipt"), () => {
+				frappe.set_route("Form", "Purchase Receipt", frm.doc.purchase_receipt);
+			});
+		}
+
+		if (!frappe.boot.versions?.india_compliance) {
 			return;
 		}
 
@@ -51,5 +65,19 @@ frappe.ui.form.on("Import Shipment", {
 					if (r.length) frm.set_value("purchase_invoice", r[0].parent);
 				});
 		}
+	},
+
+	incoterm(frm) {
+		// SOP section 4: under CIF/CIP the vendor already carries the insurance.
+		if (["CIF", "CIP"].includes(frm.doc.incoterm) && frm.doc.insurance_required) {
+			frm.set_value("insurance_required", 0);
+		}
+	},
+
+	pi_value_final(frm) {
+		frm.set_value(
+			"pi_value_variation",
+			flt(frm.doc.pi_value_final) - flt(frm.doc.pi_value_confirmed)
+		);
 	},
 });
