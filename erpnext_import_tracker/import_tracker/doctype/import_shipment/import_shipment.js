@@ -53,6 +53,72 @@ frappe.ui.form.on("Import Shipment", {
 		}
 	},
 
+	fetch_payments(frm) {
+		frappe.call({
+			method:
+				"erpnext_import_tracker.import_tracker.doctype.import_shipment.import_shipment.get_linked_payments",
+			args: { shipment: frm.doc.name },
+			freeze: true,
+			freeze_message: __("Fetching payments..."),
+			callback(r) {
+				const fetched = r.message || [];
+				// The server skips what the saved doc already lists; this skips what a
+				// previous click added but has not been saved yet.
+				const listed = new Set(
+					(frm.doc.payments || [])
+						.flatMap((row) => [row.payment_entry, row.journal_entry])
+						.filter(Boolean)
+				);
+				const rows = fetched.filter(
+					(row) => !listed.has(row.payment_entry) && !listed.has(row.journal_entry)
+				);
+
+				if (!rows.length) {
+					frappe.msgprint({
+						title: __("Nothing to fetch"),
+						message: __(
+							"No further submitted Payment Entries or Journal Entries are booked against this shipment's Purchase Order, Purchase Invoice or Bill of Entry."
+						),
+						indicator: "orange",
+					});
+					return;
+				}
+
+				let added = 0;
+				let updated = 0;
+				rows.forEach((row) => {
+					const { update_row, ...values } = row;
+					const seeded =
+						update_row && (frm.doc.payments || []).find((r) => r.name === update_row);
+					if (!seeded) {
+						frm.add_child("payments", values);
+						added++;
+						return;
+					}
+					// Fill the blanks on the row the Bill of Entry hook seeded -- never
+					// overwrite a figure someone has already keyed in.
+					Object.keys(values).forEach((field) => {
+						if (values[field] && !seeded[field]) {
+							frappe.model.set_value(seeded.doctype, seeded.name, field, values[field]);
+						}
+					});
+					updated++;
+				});
+
+				frm.refresh_field("payments");
+				const summary = [];
+				if (added) summary.push(__("{0} added", [added]));
+				if (updated) summary.push(__("{0} updated", [updated]));
+				frappe.show_alert({
+					message: __("Payments: {0}. Attach the proof on each row, then save.", [
+						summary.join(", "),
+					]),
+					indicator: "green",
+				});
+			},
+		});
+	},
+
 	purchase_order(frm) {
 		if (frm.doc.purchase_order && !frm.doc.purchase_invoice) {
 			frappe.db
