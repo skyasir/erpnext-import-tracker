@@ -30,6 +30,7 @@
   "insurance_document",
   "insurance_payment_entry",
   "payments_section",
+  "fetch_payments",
   "payments",
   "pi_value_section",
   "pi_value_confirmed",
@@ -269,6 +270,12 @@
    "fieldname": "payments_section",
    "fieldtype": "Section Break",
    "label": "Payments"
+  },
+  {
+   "depends_on": "eval:!doc.__islocal",
+   "fieldname": "fetch_payments",
+   "fieldtype": "Button",
+   "label": "Fetch Payments"
   },
   {
    "fieldname": "payments",
@@ -658,7 +665,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-08-12 10:00:00.000000",
+ "modified": "2026-08-14 10:00:00.000000",
  "modified_by": "Administrator",
  "module": "Import Tracker",
  "name": "Import Shipment",

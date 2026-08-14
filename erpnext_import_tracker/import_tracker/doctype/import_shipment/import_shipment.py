@@ -184,8 +184,13 @@ class ImportShipment(Document):
 	def require_payment(self, payment_type, label, need_utr=False):
 		"""SOP: a payment stage completes only once its proof is uploaded.
 
-		Sahil 07-08 adds the UTR / receipt hand-off to the vendor for duty and vendor
-		payments, which is what need_utr covers.
+		need_utr additionally demands the transaction reference, on the legs where someone
+		downstream has to quote it -- duty, CHA and delivery-order payments.
+
+		"Sent to Vendor" is deliberately NOT gated here. These are exactly the legs paid to
+		customs, the CHA or the shipping line rather than to the vendor, so demanding the
+		vendor hand-off before the stage can close blocks work that is genuinely finished.
+		The tick stays on the row for whoever does need to record it.
 		"""
 		rows = self.payment_rows(payment_type)
 		if not rows:
@@ -203,11 +208,8 @@ class ImportShipment(Document):
 				)
 				if not value
 			]
-			if need_utr:
-				if not row.utr_no:
-					missing.append(_("UTR / Transaction No"))
-				if not row.shared_with_vendor:
-					missing.append(_("Sent to Vendor"))
+			if need_utr and not row.utr_no:
+				missing.append(_("UTR / Transaction No"))
 			if missing:
 				frappe.throw(
 					_("Payments row {0} ({1}) is incomplete. Missing: {2}").format(
@@ -216,16 +218,32 @@ class ImportShipment(Document):
 				)
 
 	def pending_documents(self, categories=None, mandatory_only=True):
+		"""Documents still short of received + verified + attached, each labelled with what
+		is actually missing.
+
+		Naming the gap matters: a row with both ticks on and no file looks complete in the
+		grid, so a bare document name reads as a false alarm and sends people hunting.
+		"""
 		rows = self.boe_checklist
 		if categories:
 			rows = [d for d in rows if d.category in categories]
 		if mandatory_only:
 			rows = [d for d in rows if d.is_mandatory]
-		return [
-			d.document_name
-			for d in rows
-			if not (d.received and d.verified and d.attachment)
-		]
+
+		pending = []
+		for d in rows:
+			missing = [
+				text
+				for text, value in (
+					(_("Received"), d.received),
+					(_("Verified"), d.verified),
+					(_("Attachment"), d.attachment),
+				)
+				if not value
+			]
+			if missing:
+				pending.append("{0} ({1})".format(d.document_name, ", ".join(missing)))
+		return pending
 
 	# ------------------------------------------------------------------
 	# gates -- enforced in validate() so they hold however the status changed
@@ -270,8 +288,9 @@ class ImportShipment(Document):
 			pending = self.pending_documents(categories=("Mandatory Import Document",))
 			if pending:
 				frappe.throw(
-					_("These mandatory import documents are not received, verified and "
-					  "uploaded yet:<br>{0}").format("<br>".join("- " + d for d in pending))
+					_("These mandatory import documents are not complete yet. Each needs "
+					  "Received, Verified and an Attachment:<br>{0}")
+					.format("<br>".join("- " + d for d in pending))
 				)
 
 		if self.reached("Forwarded to CHA") and not self.cha:
@@ -295,14 +314,15 @@ class ImportShipment(Document):
 			)
 			if pending:
 				frappe.throw(
-					_("Cannot confirm the BOE checklist. These documents are not received, "
-					  "verified and uploaded yet:<br>{0}").format(
+					_("Cannot confirm the BOE checklist. These documents are not complete yet. "
+					  "Each needs Received, Verified and an Attachment:<br>{0}").format(
 						"<br>".join("- " + d for d in pending)
 					)
 				)
 
 		if self.reached("Duty Paid"):
-			# Sahil 07-08: the receipt / UTR must reach the vendor before duty is marked paid.
+			# The challan and its UTR are what the CHA quotes to customs, so the reference is
+			# required; whether it was forwarded on to anyone is not a gate.
 			self.require_payment("Customs Duty", _("Customs Duty"), need_utr=True)
 
 		if self.reached("Cleared"):
@@ -484,3 +504,183 @@ def make_import_shipment(purchase_order):
 		frappe.has_permission("Import Shipment", "create", throw=True)
 
 	return create_import_shipment(purchase_order)
+
+
+@frappe.whitelist()
+def get_linked_payments(shipment):
+	"""Submitted vouchers booked against this shipment, minus the ones already listed.
+
+	Two voucher types settle an import. Supplier legs go out as Payment Entries against
+	the order or the invoice; customs duty goes out as a Journal Entry against the Bill of
+	Entry, which is what India Compliance's payment action on the BOE produces.
+
+	The Payment Entry on_submit hook mirrors in only the first kind, only when allocated
+	against the Purchase Order, and only while the shipment exists and its stage gates
+	accept a save. Left behind are duty journals, entries allocated against the invoice,
+	entries made before the shipment was opened, and mirrors a gate rolled back. This is
+	the catch-up the Fetch Payments button runs.
+
+	Returns rows for the client; nothing is written here, so the user still reviews them --
+	and attaches the SWIFT copy or challan the SOP gates on -- before saving. A row may
+	carry `update_row`, naming an existing Payments row to fill in rather than duplicate.
+	"""
+	doc = frappe.get_doc("Import Shipment", shipment)
+	doc.check_permission("write")
+
+	# Imported here, not at module level: events.payment_entry imports
+	# create_import_shipment from this module, so a top-level import would be circular.
+	from erpnext_import_tracker.events.payment_entry import is_fully_paid
+
+	po = frappe.db.get_value(
+		"Purchase Order",
+		doc.purchase_order,
+		["name", "advance_paid", "grand_total", "base_grand_total", "currency", "party_account_currency"],
+		as_dict=True,
+	)
+	settled = bool(po) and is_fully_paid(po)
+
+	rows = payment_entry_rows(doc, settled) + journal_entry_rows(doc, settled)
+	mark_rows_to_update(doc, rows)
+	rows.sort(key=lambda row: (row["payment_date"], row.get("payment_entry") or row["journal_entry"]))
+	return rows
+
+
+def supplier_leg(against_invoice, settled):
+	"""Money against the invoice is settling it, never an advance. Against the order it is
+	an advance unless the order is now paid in full -- the same read the on_submit hook
+	takes, on today's figures rather than the payment date's, so the operator may still
+	correct the Select on a part-paid order."""
+	return "Balance to Supplier" if (against_invoice or settled) else "Advance to Supplier"
+
+
+def payment_entry_rows(doc, settled):
+	targets = [("Purchase Order", doc.purchase_order), ("Purchase Invoice", doc.purchase_invoice)]
+	known = {row.payment_entry for row in doc.payments if row.payment_entry}
+
+	# Grouped per voucher: one entry allocated across both the order and the invoice is
+	# one payment out of the bank, so it must not land as two rows.
+	allocations = {}
+	for reference_doctype, reference_name in targets:
+		if not reference_name:
+			continue
+		for ref in frappe.get_all(
+			"Payment Entry Reference",
+			filters={
+				"docstatus": 1,
+				"parenttype": "Payment Entry",
+				"reference_doctype": reference_doctype,
+				"reference_name": reference_name,
+			},
+			fields=["parent", "reference_doctype", "allocated_amount"],
+		):
+			if ref.parent not in known:
+				allocations.setdefault(ref.parent, []).append(ref)
+
+	if not allocations:
+		return []
+
+	rows = []
+	for entry in frappe.get_all(
+		"Payment Entry",
+		filters={"name": ("in", list(allocations)), "docstatus": 1, "payment_type": "Pay"},
+		fields=["name", "party", "party_type", "posting_date", "reference_no", "paid_amount"],
+	):
+		refs = allocations[entry.name]
+		against_invoice = any(ref.reference_doctype == "Purchase Invoice" for ref in refs)
+		rows.append(
+			{
+				"payment_type": supplier_leg(against_invoice, settled),
+				"party": entry.party if entry.party_type == "Supplier" else None,
+				"amount": sum(flt(ref.allocated_amount) for ref in refs) or flt(entry.paid_amount),
+				"payment_date": entry.posting_date,
+				"utr_no": entry.reference_no,
+				"payment_entry": entry.name,
+			}
+		)
+	return rows
+
+
+def journal_entry_rows(doc, settled):
+	"""Journal Entries against the order, the invoice or the Bill of Entry.
+
+	The BOE reference type only exists once India Compliance is installed; on a site
+	without it the duty query simply matches nothing.
+	"""
+	targets = [
+		("Purchase Order", doc.purchase_order),
+		("Purchase Invoice", doc.purchase_invoice),
+		("Bill of Entry", doc.get("bill_of_entry")),
+	]
+	known = {row.journal_entry for row in doc.payments if row.journal_entry}
+
+	allocations = {}
+	for reference_type, reference_name in targets:
+		if not reference_name:
+			continue
+		for ref in frappe.get_all(
+			"Journal Entry Account",
+			filters={
+				"docstatus": 1,
+				"parenttype": "Journal Entry",
+				"reference_type": reference_type,
+				"reference_name": reference_name,
+			},
+			fields=["parent", "reference_type", "party", "party_type", "debit_in_account_currency"],
+		):
+			if ref.parent not in known:
+				allocations.setdefault(ref.parent, []).append(ref)
+
+	if not allocations:
+		return []
+
+	rows = []
+	for entry in frappe.get_all(
+		"Journal Entry",
+		filters={"name": ("in", list(allocations)), "docstatus": 1},
+		fields=["name", "posting_date", "cheque_no"],
+	):
+		refs = allocations[entry.name]
+		# The debit leg is the payment -- it clears the payable. A credit against the same
+		# reference is the accrual or a reversal, not money leaving the bank.
+		amount = sum(flt(ref.debit_in_account_currency) for ref in refs)
+		if not amount:
+			continue
+
+		duty = any(ref.reference_type == "Bill of Entry" for ref in refs)
+		against_invoice = any(ref.reference_type == "Purchase Invoice" for ref in refs)
+		rows.append(
+			{
+				"payment_type": "Customs Duty" if duty else supplier_leg(against_invoice, settled),
+				# Duty is paid to customs, so these journal rows carry no supplier party.
+				"party": next(
+					(ref.party for ref in refs if ref.party_type == "Supplier" and ref.party), None
+				),
+				"amount": amount,
+				"payment_date": entry.posting_date,
+				"utr_no": entry.cheque_no,
+				"journal_entry": entry.name,
+			}
+		)
+	return rows
+
+
+def mark_rows_to_update(doc, rows):
+	"""Point a fetched duty journal at the row the Bill of Entry hook already seeded.
+
+	That hook writes the duty amount off the BOE with the BOE name in Remarks and no
+	voucher link, because the payment had not been made yet. Appending the journal as a
+	second row would double the duty on the shipment, so the journal fills in the seeded
+	row instead.
+	"""
+	seeded = [
+		row.name
+		for row in doc.payments
+		if row.payment_type == "Customs Duty"
+		and not row.journal_entry
+		and row.remarks
+		and row.remarks == doc.get("bill_of_entry")
+	]
+
+	for row in rows:
+		if row["payment_type"] == "Customs Duty" and seeded:
+			row["update_row"] = seeded.pop(0)

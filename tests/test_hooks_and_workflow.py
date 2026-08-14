@@ -196,6 +196,88 @@ check("the same order reads as fully paid once it really is",
       is_fully_paid(frappe._dict(paid, advance_paid=paid.base_grand_total)))
 
 # =====================================================================
+print("\n=== Fetch Payments: catch up on entries the hook never mirrored ===")
+from erpnext_import_tracker.import_tracker.doctype.import_shipment.import_shipment import (
+	get_linked_payments,
+)
+
+ship.reload()
+check("nothing to fetch while the hook's own row is on the shipment",
+      get_linked_payments(ship.name) == [], get_linked_payments(ship.name))
+
+# Stands in for the cases the hook cannot cover: a payment made before the shipment
+# existed, or one whose mirror a stage gate rolled back. The Payment Entry is submitted,
+# the Payments row is not there.
+ship.payments = [r for r in ship.payments if r.payment_entry != pe.name]
+ship.flags.ignore_permissions = True
+ship.save()
+
+fetched = get_linked_payments(ship.name)
+check("fetch finds the unmirrored payment", len(fetched) == 1,
+      [r["payment_entry"] for r in fetched])
+if fetched:
+	row = fetched[0]
+	check("fetched row points at the payment entry", row["payment_entry"] == pe.name,
+	      row["payment_entry"])
+	check("fetched row is the advance leg while the order is part paid",
+	      row["payment_type"] == "Advance to Supplier", row["payment_type"])
+	check("UTR carried over", row["utr_no"] == "UTR-ADV-001", row["utr_no"])
+	check("amount is the allocation, not the whole entry",
+	      frappe.utils.flt(row["amount"]) == frappe.utils.flt(pe.paid_amount),
+	      (row["amount"], pe.paid_amount))
+	check("proof is left for accounts to attach", "payment_proof" not in row)
+
+	ship.append("payments", row)
+	ship.flags.ignore_permissions = True
+	ship.save()
+	check("a second fetch after saving adds nothing", get_linked_payments(ship.name) == [])
+
+# Customs duty leaves the bank as a Journal Entry against the Bill of Entry, never a
+# Payment Entry. The query path is the same for any journalled leg, so this exercises it
+# against the order -- no India Compliance Bill of Entry needed on the test site.
+from erpnext.accounts.party import get_party_account
+
+company = frappe.get_cached_doc("Company", po.company)
+je = frappe.new_doc("Journal Entry")
+je.voucher_type = "Bank Entry"
+je.company = po.company
+je.posting_date = je.cheque_date = frappe.utils.today()
+je.cheque_no = "UTR-JV-001"
+je.append("accounts", {
+	"account": get_party_account("Supplier", po.supplier, po.company),
+	"party_type": "Supplier",
+	"party": po.supplier,
+	"debit_in_account_currency": 500,
+	"reference_type": "Purchase Order",
+	"reference_name": po.name,
+	"cost_center": company.cost_center,
+})
+je.append("accounts", {
+	"account": company.default_bank_account or company.default_cash_account,
+	"credit_in_account_currency": 500,
+	"cost_center": company.cost_center,
+})
+je.flags.ignore_permissions = True
+je.insert()
+je.submit()
+
+journalled = [r for r in get_linked_payments(ship.name) if r.get("journal_entry")]
+check("journal entry against the order is fetched", len(journalled) == 1, journalled)
+if journalled:
+	jrow = journalled[0]
+	check("amount comes off the debit leg, not the credit",
+	      frappe.utils.flt(jrow["amount"]) == 500.0, jrow["amount"])
+	check("UTR comes off the journal's reference number", jrow["utr_no"] == "UTR-JV-001",
+	      jrow["utr_no"])
+	check("journal row carries the supplier", jrow["party"] == po.supplier, jrow["party"])
+
+	ship.append("payments", jrow)
+	ship.flags.ignore_permissions = True
+	ship.save()
+	check("the journal entry is not fetched twice",
+	      not [r for r in get_linked_payments(ship.name) if r.get("journal_entry")])
+
+# =====================================================================
 print("\n=== workflow engine: transitions go through apply_workflow ===")
 ship.reload()
 blocked("workflow refuses to advance before the order is confirmed",

@@ -225,7 +225,7 @@ check("end use row filed as a customs query, not a checklist item",
           for d in s.boe_checklist))
 
 # =====================================================================
-print("\n=== SOP step 15 / Sahil: UTR must reach the vendor before duty is marked paid ===")
+print("\n=== SOP step 15: the duty challan and its UTR, before duty is marked paid ===")
 def _duty():
 	s.status = "Duty Paid"
 	save(s)
@@ -236,12 +236,16 @@ blocked("duty blocked without the UTR", _duty, expect="UTR", doc=s)
 for row in s.payments:
 	if row.payment_type == "Customs Duty":
 		row.utr_no = "UTRDUTY99"
-blocked("duty blocked until the details are sent to the vendor", _duty, expect="Sent to Vendor", doc=s)
+# Duty is paid to customs, not to the vendor, so the vendor hand-off must not gate it.
+allowed("duty passes on the UTR alone, with Sent to Vendor left unticked", _duty)
+check("Sent to Vendor stayed untouched",
+      not any(r.shared_with_vendor for r in s.payments if r.payment_type == "Customs Duty"))
+
 for row in s.payments:
 	if row.payment_type == "Customs Duty":
 		row.shared_with_vendor = 1
-allowed("duty passes once the receipt/UTR has gone to the vendor", _duty)
-check("shared_on stamped automatically",
+save(s)
+check("shared_on is still stamped when the tick is used",
       all(r.shared_on for r in s.payments if r.shared_with_vendor))
 
 # =====================================================================
